@@ -3,6 +3,10 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
+// Define the port number the server will listen on
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'production';
+
 // Declare Important Variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,23 +15,27 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 /* Configure Express middleware */
+// Set EJS as the templating engine
+app.set('view engine', 'ejs');
+// Tell Express where to find your templates
+app.set('views', path.join(__dirname, 'src/views'));
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Declare Routes
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'src/views/home.html'));
+    const title = 'Welcome Home';
+    res.render('home', { title });
 });
 app.get('/about', (req, res) => {
-    res.sendFile(path.join(__dirname, 'src/views/about.html'));
+    const title = 'About Me';
+    res.render('about', { title });
 });
 app.get('/products', (req, res) => {
-    res.sendFile(path.join(__dirname, 'src/views/products.html'));
+    const title = 'Our Products';
+    res.render('products', { title });
 });
-
-// Define the port number the server will listen on
-const PORT = process.env.PORT || 3000;
 
 // Start the server and listen on the specified port
 app.listen(PORT, () => {
