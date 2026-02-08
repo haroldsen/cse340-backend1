@@ -121,6 +121,7 @@ const getCoursesByFaculty = async (identifier, identifierType = 'slug', sortBy =
 const getSectionsByCourseId = (courseId, sortBy = 'time') => 
     getSectionsByCourse(courseId, 'id', sortBy);
 
+// BUG?
 const getSectionsByCourseSlug = (courseSlug, sortBy = 'time') => 
     getSectionsByCourse(courseSlug, 'slug', sortBy);
 
