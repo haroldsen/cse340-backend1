@@ -2,6 +2,10 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import { caCert } from './src/models/db.js';
+import { startSessionCleanup } from './src/utils/session-cleanup.js';
 
 // For database initialization
 import { setupDatabase, testConnection } from './src/models/setup.js';
@@ -22,6 +26,63 @@ const PORT = process.env.PORT || 3000;
  * Setup Express Server
  */
 const app = express();
+
+// Initialize PostgreSQL session store
+const pgSession = connectPgSimple(session);
+
+// Configure session middleware
+app.use(session({
+    store: new pgSession({
+        conObject: {
+            connectionString: process.env.DB_URL,
+            // Configure SSL for session store connection (required by BYU-I databases)
+            ssl: {
+                ca: caCert,
+                rejectUnauthorized: true,
+                checkServerIdentity: () => { return undefined; }
+            }
+        },
+        tableName: 'session',
+        createTableIfMissing: true
+    }),
+    secret: process.env.SESSION_SECRET,
+    /*
+    The resave: false prevents
+    unnecessary session updates
+    */
+    resave: false,
+    /*
+    saveUninitialized: false
+    prevents creating sessions for
+    users who have not logged in.
+    */
+    saveUninitialized: false,
+    cookie: {
+        /*
+        The secure setting determines whether
+        cookies require HTTPS;
+        it uses HTTP during development
+        but switches to HTTPS in production.
+        */
+        secure: NODE_ENV.includes('dev') !== true,
+        /*
+        The httpOnly: true setting prevents
+        JavaScript code from accessing session
+        cookies, protecting against XSS attacks.
+        */
+        httpOnly: true,
+        /*
+        The maxAge setting controls how long
+        sessions last before expiring;
+        here it is set to 24 hours
+        (24 * 60 * 60 * 1000 milliseconds).
+        */
+        maxAge: 24 * 60 * 60 * 1000
+    }
+}));
+
+// Start automatic session cleanup
+startSessionCleanup();
 
 /**
  * Configure Express
