@@ -1,23 +1,11 @@
-import { body, validationResult } from 'express-validator';
-import { findUserByEmail, verifyPassword } from '../../models/forms/login.js';
+
 import { Router } from 'express';
+import { validationResult } from 'express-validator';
+import { findUserByEmail, verifyPassword } from '../../models/forms/login.js';
+
+import { loginValidation } from '../../middleware/validation/forms.js';
 
 const router = Router();
-
-/**
- * Validation rules for login form
- */
-const loginValidation = [
-    body('email')
-        .trim()
-        .isEmail()
-        .withMessage('Please provide a valid email address')
-        .normalizeEmail(),
-
-    body('password')
-        .isLength({ min: 8 })
-        .withMessage('Password is required')
-];
 
 /**
  * Display the login form.
@@ -37,25 +25,27 @@ const processLogin = async (req, res) => {
 
     if (!errors.isEmpty()) {
         // Log validation errors to console
-        console.error('Validation errors:', errors.array());
+        errors.array().forEach(error => {
+            req.flash('error', error.msg);
+        });
         // Redirect back to /login
         return res.redirect('/login');
     }
 
-    // Extract email and password from req.body
-    const { email, password } = req.body;
-
     try {
+        // Extract email and password from req.body
+        const { email, password } = req.body;
 
         const user = await findUserByEmail(email);
         if (!user) {
-            console.log('User not found.');
-            res.redirect('/login')
+            req.flash('error', 'Invalid email or password');
+            return res.redirect('/login')
         }
 
-        if (!(await verifyPassword(password, user.password))) {
-            console.log('Invalid password');
-            res.redirect('/login');
+        const isVerified = await verifyPassword(password, user.password);
+        if (!isVerified) {
+            req.flash('error', 'Invalid email or password');
+            return res.redirect('/login');
         }
 
         // SECURITY: Remove password from user object before storing in session
@@ -64,12 +54,14 @@ const processLogin = async (req, res) => {
         // Store user in session:
         req.session.user = user;
 
+        req.flash('success', `Welcome, ${user.name}!`);
         res.redirect('/dashboard');
 
     } catch (error) {
         // Model functions do not catch errors, so handle them here
         console.error('Error processing login:', error);
         
+        req.flash('error', 'An error occured while logging in.');
         res.redirect('/login');
     }
 };
@@ -147,4 +139,7 @@ router.post('/', loginValidation, processLogin);
 
 // Export router as default, and specific functions for root-level routes
 export default router;
-export { processLogout, showDashboard };
+export {
+    processLogout,
+    showDashboard
+};
